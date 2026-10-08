@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.4
+
+- Schedule first-run setup only after the main window's initial show event has completed.
+- Add a toolbar action to reopen setup and log setup detection and wizard display state for diagnosis.
+
 ## v0.1.3
 
 - Show the main window before initializing WebView2 or fetching feeds so first launch is not hidden behind startup work.

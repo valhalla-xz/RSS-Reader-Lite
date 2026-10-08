@@ -20,6 +20,7 @@ public partial class Form1 : Form
     private string _view = "ホーム";
     private bool _loading;
     private bool _needsSetup;
+    private bool _shownInitializationStarted;
     private long? _selectedCategoryId;
 
     public Form1() : this(null) { }
@@ -40,7 +41,7 @@ public partial class Form1 : Form
         var main=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=2}; main.RowStyles.Add(new RowStyle(SizeType.Absolute,48)); main.RowStyles.Add(new RowStyle(SizeType.Percent,100)); root.Controls.Add(main,1,0);
         var toolbar=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=false,AutoScroll=true,Padding=new Padding(2)};
         _refresh.Text="今すぐ更新"; _refresh.AutoSize=true; _refresh.Click+=async(_,_)=>await RefreshAllAsync(); toolbar.Controls.Add(_refresh);
-        AddButton(toolbar,"フィード管理",(_,_)=>ManageFeeds()); AddButton(toolbar,"カテゴリ",(_,_)=>ManageCategories()); AddButton(toolbar,"分類ルール",(_,_)=>ManageRules()); AddButton(toolbar,"興味設定",(_,_)=>ManageInterests());
+        AddButton(toolbar,"初回セットアップ",(_,_)=>OpenSetupWizard()); AddButton(toolbar,"フィード管理",(_,_)=>ManageFeeds()); AddButton(toolbar,"カテゴリ",(_,_)=>ManageCategories()); AddButton(toolbar,"分類ルール",(_,_)=>ManageRules()); AddButton(toolbar,"興味設定",(_,_)=>ManageInterests());
         toolbar.Controls.Add(new Label{Text="自動更新(分)",AutoSize=true,Padding=new Padding(4,9,0,0)}); _interval.DropDownStyle=ComboBoxStyle.DropDownList;_interval.Width=75;_interval.Items.AddRange(["0","5","10","15","30","60"]);var saved=_store.GetSetting("refresh_minutes","10");_interval.SelectedItem=_interval.Items.Contains(saved)?saved:"10";_interval.SelectedIndexChanged+=(_,_)=>SetRefreshInterval();toolbar.Controls.Add(_interval);
         _search.Width=210;_search.TextChanged+=(_,_)=>RefreshArticles();toolbar.Controls.Add(new Label{Text="検索",AutoSize=true,Padding=new Padding(2,9,0,0)});toolbar.Controls.Add(_search);main.Controls.Add(toolbar,0,0);
         var split=new SplitContainer{Dock=DockStyle.Fill,Orientation=Orientation.Vertical};Shown+=(_,_)=>{if(split.Width>700){split.Panel1MinSize=360;split.Panel2MinSize=300;split.SplitterDistance=Math.Min(620,split.Width-320);}};main.Controls.Add(split,0,1);
@@ -61,29 +62,55 @@ public partial class Form1 : Form
         try
         {
             _needsSetup=!_store.IsSetupComplete;
+            StartupDiagnostics.WriteInfo($"Main window loaded. SetupComplete={_store.IsSetupComplete}; NeedsSetup={_needsSetup}; Database={_store.DatabasePath}");
             _navigation.SelectedIndex=0;
             SetRefreshInterval();
             if(_needsSetup)_status.Text="初回セットアップを開始します…";
         }
         catch(Exception ex){ShowStartupFailure(ex);Close();}
     }
-    private async void OnShown(object? sender,EventArgs e)
+    private void OnShown(object? sender,EventArgs e)
+    {
+        if(_shownInitializationStarted)return;
+        _shownInitializationStarted=true;
+        // Schedule initialization after the initial Shown message has returned. This ensures
+        // the owner has a native visible window before ShowDialog is called on first launch.
+        BeginInvoke(new Action(async()=>await InitializeAfterShownAsync()));
+    }
+    private async Task InitializeAfterShownAsync()
     {
         try
         {
-            await Task.Yield(); // Let Windows paint the owner before opening a modal first-run wizard.
             if(_needsSetup)
             {
-                using var wizard=new SetupWizardDialog();
-                if(wizard.ShowDialog(this)!=DialogResult.OK){Close();return;}
-                _store.CompleteInitialSetup(wizard.SelectedFeeds,wizard.SelectedInterests,wizard.CustomInterests,wizard.RefreshMinutes);
-                _interval.SelectedItem=wizard.RefreshMinutes.ToString();
+                if(!OpenSetupWizard())return;
             }
             try{await _browser.EnsureCoreWebView2Async();}
             catch(Exception ex){StartupDiagnostics.Write(ex,"WebView2 initialization");_status.Text=$"内蔵ブラウザを利用できません。外部ブラウザは利用できます。詳細: {StartupDiagnostics.LogPath}";}
             if(_store.GetFeeds().Count>0)_=RefreshAllAsync();
         }
         catch(Exception ex){ShowStartupFailure(ex);}
+    }
+    private bool OpenSetupWizard()
+    {
+        try
+        {
+            using var wizard=new SetupWizardDialog();
+            StartupDiagnostics.WriteInfo($"Opening setup wizard. OwnerVisible={Visible}; IsHandleCreated={IsHandleCreated}");
+            if(wizard.ShowDialog(this)!=DialogResult.OK)
+            {
+                StartupDiagnostics.WriteInfo("Setup wizard was cancelled.");
+                if(_needsSetup){Close();return false;}
+                return true;
+            }
+            _store.CompleteInitialSetup(wizard.SelectedFeeds,wizard.SelectedInterests,wizard.CustomInterests,wizard.RefreshMinutes);
+            _needsSetup=false;
+            _interval.SelectedItem=wizard.RefreshMinutes.ToString();
+            _status.Text="初回セットアップが完了しました。";
+            StartupDiagnostics.WriteInfo("Setup wizard completed.");
+            return true;
+        }
+        catch(Exception ex){ShowStartupFailure(ex);return false;}
     }
     private void ShowStartupFailure(Exception ex){StartupDiagnostics.Write(ex,"Main window startup");MessageBox.Show(this,$"アプリの起動処理でエラーが発生しました。\r\n\r\n{ex.Message}\r\n\r\n診断ログ: {StartupDiagnostics.LogPath}","RSS Reader Lite 起動エラー",MessageBoxButtons.OK,MessageBoxIcon.Error);}
     private void OnClosing(object? sender,FormClosingEventArgs e){_refreshTimer.Stop();_lifetime.Cancel();_lifetime.Dispose();_browser.Dispose();}

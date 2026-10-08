@@ -47,6 +47,7 @@ internal static class Program
         try
         {
             using var mainWindow=new Form1(new NewsStore(Path.Combine(launchFolder,"first-run.db")));var wizardOwnerVisible=false;var wizardOpened=false;
+            Check(FindAll<Button>(mainWindow).Any(x=>x.Text=="初回セットアップ"),"メイン画面から初回セットアップを再表示できる");
             using var dismissTimer=new System.Windows.Forms.Timer{Interval=100};dismissTimer.Tick+=(_,_)=>{var dialog=Application.OpenForms.OfType<SetupWizardDialog>().FirstOrDefault();if(dialog==null)return;wizardOpened=true;wizardOwnerVisible=dialog.Owner?.Visible==true;dialog.DialogResult=DialogResult.Cancel;dialog.Close();};dismissTimer.Start();
             mainWindow.Show();var deadline=DateTime.UtcNow.AddSeconds(2);while(!wizardOpened&&DateTime.UtcNow<deadline){Application.DoEvents();Thread.Sleep(10);}dismissTimer.Stop();Application.DoEvents();
             Check(wizardOpened&&wizardOwnerVisible,"初回ウィザードを表示済みメイン画面の子として開く");

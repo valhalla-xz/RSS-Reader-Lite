@@ -16,4 +16,16 @@ internal static class StartupDiagnostics
         }
         catch { }
     }
+
+    public static void WriteInfo(string message)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(LogPath)!;
+            Directory.CreateDirectory(directory);
+            lock (Gate)
+                File.AppendAllText(LogPath, $"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}");
+        }
+        catch { }
+    }
 }

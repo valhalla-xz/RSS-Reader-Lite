@@ -5,13 +5,15 @@ namespace WinFormsApp1;
 public sealed class NewsStore
 {
     private readonly string _connectionString;
+    public string DatabasePath { get; }
 
     public NewsStore(string? databasePath=null)
     {
         var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LocalNewsReader");
         Directory.CreateDirectory(directory);
         var path=databasePath??Path.Combine(directory,"news.db");Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
+        DatabasePath=Path.GetFullPath(path);
+        _connectionString = new SqliteConnectionStringBuilder { DataSource = DatabasePath }.ToString();
         using var db = Open();
         using var cmd = db.CreateCommand();
         cmd.CommandText = """

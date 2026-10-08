@@ -1,6 +1,8 @@
-# ローカルニュースリーダー
+# RSS Reader Lite
 
 RSS/Atomニュースを端末内のSQLiteへ保存し、分類ルールや興味設定で整理して閲覧するWindowsデスクトップアプリです。常駐サービス、タスクトレイ、スタートアップ登録は行いません。自動更新はアプリを開いている間だけ動作します。
+
+GitHub: https://github.com/valhalla-xz/RSS-Reader-Lite
 
 ## 対応環境と技術選定
 
@@ -22,16 +24,43 @@ WebView2 Evergreen RuntimeはWindows 10/11で利用でき、Windows 11には通�
 2. 興味カテゴリを選び、独自キーワードを入力
 3. 自動更新間隔を確認して開始
 
-初期フィードにはNHK、ITmedia NEWS/AI+/PC USER、GIGAZINE、BBC World/Technology/Science、The Guardian World、NASAを用意しています。ITmedia RSSは[運営元のRSS一覧](https://corp.itmedia.co.jp/media/rss_list/)、GIGAZINEは[公式のRSS URL案内](https://gigazine.net/news/20180620-gigazine-rss-change/)を参照しています。配信元の仕様や公開状況は変更されるため、取得結果はフィード管理画面で確認してください。
+初期フィード候補は日本・海外の複数分野から選べます。日本はNHK、ITmedia総合/NEWS/AI+/Mobile/PC USER/ビジネス/エンタープライズ、GIGAZINE、nippon.comニュース/旅と暮らし。海外はBBC（世界、アジア、政治、経済、テクノロジー、科学、健康、芸術、スポーツ）、The Guardian（世界、経済、テクノロジー、科学、環境、文化、スポーツ）、Le Monde（国際、経済、科学、健康、文化、スポーツ、旅行）、NASAを用意しています。既定では国内一般、海外一般、経済などを選択し、個別ジャンルはウィザードで任意に追加できます。ITmediaの提供カテゴリは[運営元のRSS一覧](https://corp.itmedia.co.jp/media/rss_list/)、BBCは[公式フィード案内](https://support.bbc.co.uk/platform/feeds/NewsFeeds.htm)、Guardianは[公式RSS説明](https://www.theguardian.com/help/feeds)、Le Mondeは[公式RSS一覧](https://www.lemonde.fr/en/about-us/article/2026/03/27/le-monde-rss-feeds_6751860_115.html)、nippon.comは[公式RSS一覧](https://www.nippon.com/ja/rss_list/)を参照しています。GIGAZINEは[公式RSS URL案内](https://gigazine.net/news/20180620-gigazine-rss-change/)を参照しています。配信元の仕様やURLは変更されるため、初回取得結果はフィード管理画面でご確認ください。
 
-## ビルドと起動
+初期カテゴリと興味の候補も、国内外ニュース、政治・社会、経済、テクノロジー、PC/モバイル、自動車、科学、環境、健康、教育、文化、スポーツ、ゲーム、旅行・食を含む構成です。初期選択は広めのジャンルに設定し、個人の関心に合わせて後から追加・変更できます。
+
+## 開発・ビルド・GitHubへの反映
 
 Visual Studio Community 2026の.NETデスクトップ開発機能、または.NET 10 SDKと.NET Framework 4.8 Developer Packが必要です。初回はNuGet.orgへの接続が必要です。
 
 ```powershell
+git clone https://github.com/valhalla-xz/RSS-Reader-Lite.git
+cd RSS-Reader-Lite
 dotnet restore .\WinFormsApp1.slnx
 dotnet build .\WinFormsApp1.slnx -c Release
 dotnet run --project .\WinFormsApp1\WinFormsApp1.csproj
+```
+
+既存チェックアウトでリモートURLを確認・修正する場合:
+
+```powershell
+git remote -v
+git remote set-url origin https://github.com/valhalla-xz/RSS-Reader-Lite.git
+git fetch origin
+```
+
+変更をコミットして現在のブランチをGitHubへプッシュする場合:
+
+```powershell
+git add README.md CHANGELOG.md WinFormsApp1 tests
+git commit -m "変更内容を短く記載"
+git push origin HEAD
+```
+
+リリースを作る際は重複しないバージョンタグをプッシュし、GitHubの[Releases](https://github.com/valhalla-xz/RSS-Reader-Lite/releases)で同じタグのリリースを作成して配布ZIPを添付してください。
+
+```powershell
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 Windows向けx64アプリとしてビルドされます。配布用出力は次で作成できます。

@@ -66,15 +66,16 @@ public sealed class NewsStore
         c.CommandText=$"SELECT a.Id,a.FeedId,a.Title,a.Url,a.Guid,a.Published,a.Fetched,a.Summary,a.Content,a.IsRead,a.IsFavorite,f.Name FROM Articles a JOIN Feeds f ON f.Id=a.FeedId WHERE 1=1 {where} ORDER BY COALESCE(a.Published,a.Fetched) DESC LIMIT 2000";
         if(categoryId.HasValue)c.Parameters.AddWithValue("$cat",categoryId.Value); if(!string.IsNullOrWhiteSpace(search))c.Parameters.AddWithValue("$q",$"%{search}%");
         using var r=c.ExecuteReader(); var list=new List<Article>(); while(r.Read()) list.Add(new Article{Id=r.GetInt64(0),FeedId=r.GetInt64(1),Title=r.GetString(2),Url=r.GetString(3),Guid=r.GetString(4),Published=ParseDate(r.IsDBNull(5)?null:r.GetString(5)),Fetched=ParseDate(r.GetString(6))??DateTimeOffset.Now,Summary=r.GetString(7),Content=r.GetString(8),IsRead=r.GetInt64(9)!=0,IsFavorite=r.GetInt64(10)!=0,Media=r.GetString(11)});
-        var rules=GetRules(); var cats=GetCategories().ToDictionary(x=>x.Id,x=>x.FullPath); var interests=GetInterests();
+        var rules=GetRules(); var categoryRows=GetCategories(); var cats=categoryRows.ToDictionary(x=>x.Id,x=>x.FullPath); var parents=categoryRows.ToDictionary(x=>x.Id,x=>x.ParentId); var interests=GetInterests();
         var ranked=list.Select(article=>{
             var matches=rules.Where(rule=>RuleMatches(rule,article)).Select(rule=>rule.CategoryId).Distinct().ToList();
             article.Categories=string.Join(", ",matches.Where(cats.ContainsKey).Select(id=>cats[id]));
             int score=(article.IsFavorite?4:0)+matches.Count*3+rules.Where(rule=>RuleMatches(rule,article)).Sum(rule=>Math.Max(0,rule.Priority));
-            foreach(var interest in interests){if(interest.CategoryId.HasValue&&matches.Contains(interest.CategoryId.Value))score+=5; if(!string.IsNullOrWhiteSpace(interest.Term)&&Contains(article.Title+" "+article.Summary+" "+article.Content,interest.Term))score+=2;}
-            return (article,score);
+            var matchingTree=matches.ToHashSet();foreach(var match in matches){var current=match;while(parents.TryGetValue(current,out var parent)&&parent.HasValue){if(!matchingTree.Add(parent.Value))break;current=parent.Value;}}
+            foreach(var interest in interests){if(interest.CategoryId.HasValue&&matchingTree.Contains(interest.CategoryId.Value))score+=5; if(!string.IsNullOrWhiteSpace(interest.Term)&&Contains(article.Title+" "+article.Summary+" "+article.Content,interest.Term))score+=2;}
+            return (article,score,matchingTree);
         });
-        if(categoryId.HasValue)ranked=ranked.Where(x=>rules.Any(rule=>rule.CategoryId==categoryId.Value&&RuleMatches(rule,x.article)));
+        if(categoryId.HasValue)ranked=ranked.Where(x=>x.matchingTree.Contains(categoryId.Value));
         if(view=="おすすめ")ranked=ranked.Where(x=>x.score>0).OrderByDescending(x=>x.score).ThenByDescending(x=>x.article.Published??x.article.Fetched);
         return ranked.Select(x=>x.article).ToList();
     }
@@ -98,10 +99,11 @@ public sealed class NewsStore
         var ids=new Dictionary<string,long>();
         long Root(string name)=>ids[name]=InsertCategory(name,null);
         long Child(string path,string name){var parentPath=path.Substring(0,path.LastIndexOf('>')).Trim();var parent=ids[parentPath];return ids[path]=InsertCategory(name,parent);}
-        Root("国内ニュース");Root("世界ニュース");Root("テクノロジー");Child("テクノロジー > AI","AI");Root("PC・OS");Child("PC・OS > Windows","Windows");Child("PC・OS > Linux","Linux");Child("PC・OS > ハードウェア","ハードウェア");Root("自動車");Child("自動車 > EV","EV");Root("モータースポーツ");Root("ゲーム");Root("科学・環境");
+        Root("国内ニュース");Root("世界ニュース");Root("政治・社会");Root("経済・ビジネス");Root("テクノロジー");Child("テクノロジー > AI","AI");Child("テクノロジー > モバイル","モバイル");Root("PC・OS");Child("PC・OS > Windows","Windows");Child("PC・OS > Linux","Linux");Child("PC・OS > ハードウェア","ハードウェア");Root("自動車");Child("自動車 > EV","EV");Root("モータースポーツ");Root("ゲーム");Root("科学・環境");Root("医療・健康");Root("教育・研究");Root("文化・エンタメ");Root("スポーツ");Root("暮らし・旅行");
         InsertRule(ids["テクノロジー > AI"],"AI;artificial intelligence;machine learning;generative AI;生成AI;人工知能");
+        InsertRule(ids["政治・社会"],"election;government;parliament;politics;選挙;政府;国会;政治");InsertRule(ids["経済・ビジネス"],"business;economy;company;market;企業;経済;株価;ビジネス");
         InsertRule(ids["PC・OS > Windows"],"Windows;Microsoft");InsertRule(ids["PC・OS > Linux"],"Linux");InsertRule(ids["PC・OS > ハードウェア"],"PC;processor;GPU;Radeon;GeForce;ハードウェア");
-        InsertRule(ids["自動車 > EV"],"EV;BEV;electric vehicle;electric car;battery vehicle;電気自動車");InsertRule(ids["モータースポーツ"],"Formula 1;F1;motorsport;モータースポーツ");InsertRule(ids["ゲーム"],"game;gaming;video game;ゲーム");InsertRule(ids["科学・環境"],"science;NASA;climate;科学;宇宙;環境");
+        InsertRule(ids["テクノロジー > モバイル"],"smartphone;mobile phone;telecom;スマートフォン;携帯電話");InsertRule(ids["自動車 > EV"],"EV;BEV;electric vehicle;electric car;battery vehicle;電気自動車");InsertRule(ids["モータースポーツ"],"Formula 1;F1;motorsport;モータースポーツ");InsertRule(ids["ゲーム"],"game;gaming;video game;ゲーム");InsertRule(ids["科学・環境"],"science;NASA;climate;environment;科学;宇宙;気候;環境");InsertRule(ids["医療・健康"],"healthcare;medicine;medical;health;医療;健康");InsertRule(ids["教育・研究"],"education;university;research;教育;大学;研究");InsertRule(ids["文化・エンタメ"],"culture;arts;film;movie;music;entertainment;文化;芸術;映画;音楽");InsertRule(ids["スポーツ"],"sport;football;baseball;tennis;スポーツ;野球;サッカー");InsertRule(ids["暮らし・旅行"],"travel;tourism;food;lifestyle;旅行;観光;料理;暮らし");
         foreach(var feed in feeds){using var c=db.CreateCommand();c.Transaction=tx;c.CommandText="INSERT OR IGNORE INTO Feeds(Name,Url,Enabled,Favorite,LastResult) VALUES($n,$u,1,$f,'未取得')";c.Parameters.AddWithValue("$n",feed.Name.Trim());c.Parameters.AddWithValue("$u",feed.Url.Trim());c.Parameters.AddWithValue("$f",feed.Favorite?1:0);c.ExecuteNonQuery();}
         var uniqueTerms=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach(var interest in interests){var categoryIds=interest.CategoryPaths.Where(ids.ContainsKey).Select(x=>ids[x]).ToList();var first=true;foreach(var term in interest.Terms.Select(x=>x.Trim()).Where(x=>x.Length>0)){if(!uniqueTerms.Add(term))continue;using var c=db.CreateCommand();c.Transaction=tx;c.CommandText="INSERT INTO Interests(Term,CategoryId) SELECT $t,$category WHERE NOT EXISTS(SELECT 1 FROM Interests WHERE Term=$t AND CategoryId IS $category)";c.Parameters.AddWithValue("$t",term);c.Parameters.AddWithValue("$category",first&&categoryIds.Count>0?(object)categoryIds[0]:DBNull.Value);c.ExecuteNonQuery();first=false;}if(first&&categoryIds.Count>0){using var c=db.CreateCommand();c.Transaction=tx;c.CommandText="INSERT INTO Interests(Term,CategoryId) SELECT $t,$category WHERE NOT EXISTS(SELECT 1 FROM Interests WHERE Term=$t AND CategoryId=$category)";c.Parameters.AddWithValue("$t",interest.Name);c.Parameters.AddWithValue("$category",categoryIds[0]);c.ExecuteNonQuery();}}

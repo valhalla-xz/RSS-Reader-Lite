@@ -29,12 +29,13 @@ internal static class Program
     private static void TestSetupWizardGui()
     {
         using var wizard=new SetupWizardDialog();wizard.Show();Application.DoEvents();
-        var lists=FindAll<CheckedListBox>(wizard);var feedList=lists.Single(x=>x.Items.Count==10&&x.Items[0] is FeedOption);var interestList=lists.Single(x=>x.Items.Count==10&&x.Items[0] is SetupInterest);
+        var lists=FindAll<CheckedListBox>(wizard);var feedList=lists.Single(x=>x.Items.Count>20&&x.Items[0] is FeedOption);var interestList=lists.Single(x=>x.Items.Count>20&&x.Items[0] is SetupInterest);var originalFeedCount=feedList.Items.Count;
         Check(wizard.Controls.OfType<TabControl>().Single().TabPages.Count==3,"初回セットアップは取得先・関心・確認の3画面を表示");
-        Check(feedList.CheckedItems.Count>=4,"国内/海外の初期フィード候補を選択済みで表示");
+        Check(feedList.CheckedItems.Count>=6&&feedList.Items.Count>=30&&feedList.Items.Cast<object>().Any(x=>x.ToString()!.Contains("nippon.com"))&&feedList.Items.Cast<object>().Any(x=>x.ToString()!.Contains("Le Monde Sports")),"国内/海外と複数ジャンルを含む30件以上の初期フィード候補を表示");
+        Check(interestList.Items.Count>=20&&interestList.Items.Cast<object>().Any(x=>x.ToString()!.Contains("医療・健康"))&&interestList.Items.Cast<object>().Any(x=>x.ToString()!.Contains("旅行・観光")),"関心カテゴリに政治・経済から健康・文化・旅行までを用意");
         var sourceGroup=FindAll<GroupBox>(wizard).Single(x=>x.Text.Contains("RSS/Atom URL"));var sourceInputs=FindAll<TextBox>(sourceGroup);sourceInputs[0].Text="テスト追加フィード";sourceInputs[1].Text="https://example.test/feed.xml";FindAll<Button>(sourceGroup).Single(x=>x.Text=="追加").PerformClick();Application.DoEvents();
-        Check(feedList.Items.Count==11&&feedList.CheckedItems.Cast<object>().Any(x=>x.ToString()!.Contains("テスト追加フィード")),"ウィザード画面から任意RSS URLを追加し選択");
-        interestList.SetItemChecked(3,true);
+        Check(feedList.Items.Count==originalFeedCount+1&&feedList.CheckedItems.Cast<object>().Any(x=>x.ToString()!.Contains("テスト追加フィード")),"ウィザード画面から任意RSS URLを追加し選択");
+        interestList.SetItemChecked(Enumerable.Range(0,interestList.Items.Count).Single(i=>interestList.Items[i].ToString()!.Contains("PC・半導体・GPU")),true);
         FindAll<ComboBox>(wizard).Single().SelectedItem="15";
         var customGroup=FindAll<GroupBox>(wizard).Single(x=>x.Text.Contains("追加のキーワード"));customGroup.Controls.OfType<TextBox>().Single().Text="SpaceX";
         wizard.Controls.OfType<TabControl>().Single().SelectedIndex=2;Application.DoEvents();
@@ -64,6 +65,7 @@ internal static class Program
             Check(store.GetArticles("新着").Count==1,"RSS記事を取得し、再取得時にGUIDで重複を防止");
             var ev=store.GetCategories().Single(x=>x.FullPath=="自動車 > EV");
             Check(store.GetArticles("カテゴリ",categoryId:ev.Id).Count==1&&store.GetArticles("おすすめ").Count==1,"既定ルールでカテゴリ分類とおすすめに反映");
+            var cars=store.GetCategories().Single(x=>x.FullPath=="自動車");Check(store.GetArticles("カテゴリ",categoryId:cars.Id).Count==1,"親カテゴリの表示に子カテゴリの記事を含める");
             var cats=store.GetCategories();var game=cats.Single(x=>x.FullPath=="ゲーム");var world=cats.Single(x=>x.FullPath=="世界ニュース");var ai=cats.Single(x=>x.FullPath=="テクノロジー > AI");
             store.SaveRule(new ClassificationRule{CategoryId=game.Id,Pattern="EV;battery",Operator="AND",Field="タイトル"});store.SaveRule(new ClassificationRule{CategoryId=world.Id,Pattern="blocked;excluded",Operator="NOT（いずれも含まない）",Field="タイトル"});store.SaveRule(new ClassificationRule{CategoryId=ai.Id,Pattern="^EV",Field="タイトル",IsRegex=true,Priority=9});
             Check(store.GetArticles("カテゴリ",categoryId:game.Id).Count==1&&store.GetArticles("カテゴリ",categoryId:world.Id).Count==1&&store.GetArticles("カテゴリ",categoryId:ai.Id).Count==1,"AND/NOT/正規表現ルールを記事のカテゴリ判定に適用");

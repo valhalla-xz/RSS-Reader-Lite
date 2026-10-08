@@ -27,7 +27,7 @@ public partial class Form1 : Form
         _store=store??new NewsStore();
         InitializeComponent();
         _reader = new FeedReader(_store);
-        Text = "ローカルニュースリーダー"; MinimumSize = new Size(1050, 650); Size = new Size(1420, 900); StartPosition = FormStartPosition.CenterScreen;
+        Text = "RSS Reader Lite"; MinimumSize = new Size(1050, 650); Size = new Size(1420, 900); StartPosition = FormStartPosition.CenterScreen;
         BuildUi(); Load += OnLoaded; FormClosing += OnClosing;
     }
 

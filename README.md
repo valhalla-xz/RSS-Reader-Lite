@@ -56,7 +56,7 @@ git commit -m "変更内容を短く記載"
 git push origin HEAD
 ```
 
-リリースは重複しないバージョンタグをプッシュするとGitHub ActionsがWindowsビルドとスモークテストを実行し、成功後に配布ZIPを添付したGitHub Releaseを公開します。[Releases](https://github.com/valhalla-xz/RSS-Reader-Lite/releases)から結果を確認できます。
+GitHub Actionsが有効な場合、重複しないバージョンタグをプッシュするとWindowsビルドとスモークテストを実行し、成功後に配布ZIPを添付したGitHub Releaseを公開します。Actionsが無効な場合は、作成済みのZIPを使いGitHubの[Releases](https://github.com/valhalla-xz/RSS-Reader-Lite/releases)から手動でリリースしてください。このv0.1.2はActionsの実行履歴が確認できなかったため、GitHub APIからリリースを作成しています。
 
 ```powershell
 git tag v0.1.3

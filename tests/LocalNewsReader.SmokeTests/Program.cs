@@ -42,6 +42,16 @@ internal static class Program
         FindAll<Button>(wizard).Single(x=>x.Text=="ニュースを読み始める").PerformClick();Application.DoEvents();
         Check(wizard.DialogResult==DialogResult.OK,"ウィザードの完了操作で設定結果を確定");
         Check(wizard.SelectedFeeds.Count>=4&&wizard.SelectedInterests.Any(x=>x.Name=="PC・半導体・GPU")&&wizard.CustomInterests.Contains("SpaceX")&&wizard.RefreshMinutes==15,"フィード・関心・自由語・更新間隔をウィザードから取得");
+
+        var launchFolder=Path.Combine(Path.GetTempPath(),"LocalNewsReader-first-run-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(launchFolder);
+        try
+        {
+            using var mainWindow=new Form1(new NewsStore(Path.Combine(launchFolder,"first-run.db")));var wizardOwnerVisible=false;var wizardOpened=false;
+            using var dismissTimer=new System.Windows.Forms.Timer{Interval=100};dismissTimer.Tick+=(_,_)=>{var dialog=Application.OpenForms.OfType<SetupWizardDialog>().FirstOrDefault();if(dialog==null)return;wizardOpened=true;wizardOwnerVisible=dialog.Owner?.Visible==true;dialog.DialogResult=DialogResult.Cancel;dialog.Close();};dismissTimer.Start();
+            mainWindow.Show();var deadline=DateTime.UtcNow.AddSeconds(2);while(!wizardOpened&&DateTime.UtcNow<deadline){Application.DoEvents();Thread.Sleep(10);}dismissTimer.Stop();Application.DoEvents();
+            Check(wizardOpened&&wizardOwnerVisible,"初回ウィザードを表示済みメイン画面の子として開く");
+        }
+        finally{try{Directory.Delete(launchFolder,true);}catch{}}
     }
 
     private static async Task RunStoreAndFeedTests()

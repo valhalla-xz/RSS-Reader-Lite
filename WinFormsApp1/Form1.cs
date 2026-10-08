@@ -19,6 +19,7 @@ public partial class Form1 : Form
     private readonly Button _refresh = new();
     private string _view = "ホーム";
     private bool _loading;
+    private bool _needsSetup;
     private long? _selectedCategoryId;
 
     public Form1() : this(null) { }
@@ -28,7 +29,7 @@ public partial class Form1 : Form
         InitializeComponent();
         _reader = new FeedReader(_store);
         Text = "RSS Reader Lite"; MinimumSize = new Size(1050, 650); Size = new Size(1420, 900); StartPosition = FormStartPosition.CenterScreen;
-        BuildUi(); Load += OnLoaded; FormClosing += OnClosing;
+        BuildUi(); Load += OnLoaded; Shown += OnShown; FormClosing += OnClosing;
     }
 
     private void BuildUi()
@@ -55,22 +56,39 @@ public partial class Form1 : Form
         _refreshTimer.Tick+=async(_,_)=>await RefreshAllAsync();
     }
     private static void AddButton(Control parent,string text,EventHandler action){var b=new Button{Text=text,AutoSize=true,Height=32};b.Click+=action;parent.Controls.Add(b);}
-    private async void OnLoaded(object? sender,EventArgs e)
+    private void OnLoaded(object? sender,EventArgs e)
     {
-        if(!_store.IsSetupComplete)
+        try
         {
-            using var wizard=new SetupWizardDialog();
-            if(wizard.ShowDialog(this)!=DialogResult.OK){Close();return;}
-            try{_store.CompleteInitialSetup(wizard.SelectedFeeds,wizard.SelectedInterests,wizard.CustomInterests,wizard.RefreshMinutes);_interval.SelectedItem=wizard.RefreshMinutes.ToString();}
-            catch(Exception ex){MessageBox.Show(this,$"初回設定を保存できませんでした。\r\n{ex.Message}","セットアップエラー",MessageBoxButtons.OK,MessageBoxIcon.Error);Close();return;}
+            _needsSetup=!_store.IsSetupComplete;
+            _navigation.SelectedIndex=0;
+            SetRefreshInterval();
+            if(_needsSetup)_status.Text="初回セットアップを開始します…";
         }
-        _navigation.SelectedIndex=0;SetRefreshInterval();
-        try{await _browser.EnsureCoreWebView2Async();}catch(Exception ex){_status.Text=$"WebView2を初期化できません: {ex.Message}";}
-        if(_store.GetFeeds().Count>0)await RefreshAllAsync();
+        catch(Exception ex){ShowStartupFailure(ex);Close();}
     }
+    private async void OnShown(object? sender,EventArgs e)
+    {
+        try
+        {
+            await Task.Yield(); // Let Windows paint the owner before opening a modal first-run wizard.
+            if(_needsSetup)
+            {
+                using var wizard=new SetupWizardDialog();
+                if(wizard.ShowDialog(this)!=DialogResult.OK){Close();return;}
+                _store.CompleteInitialSetup(wizard.SelectedFeeds,wizard.SelectedInterests,wizard.CustomInterests,wizard.RefreshMinutes);
+                _interval.SelectedItem=wizard.RefreshMinutes.ToString();
+            }
+            try{await _browser.EnsureCoreWebView2Async();}
+            catch(Exception ex){StartupDiagnostics.Write(ex,"WebView2 initialization");_status.Text=$"内蔵ブラウザを利用できません。外部ブラウザは利用できます。詳細: {StartupDiagnostics.LogPath}";}
+            if(_store.GetFeeds().Count>0)_=RefreshAllAsync();
+        }
+        catch(Exception ex){ShowStartupFailure(ex);}
+    }
+    private void ShowStartupFailure(Exception ex){StartupDiagnostics.Write(ex,"Main window startup");MessageBox.Show(this,$"アプリの起動処理でエラーが発生しました。\r\n\r\n{ex.Message}\r\n\r\n診断ログ: {StartupDiagnostics.LogPath}","RSS Reader Lite 起動エラー",MessageBoxButtons.OK,MessageBoxIcon.Error);}
     private void OnClosing(object? sender,FormClosingEventArgs e){_refreshTimer.Stop();_lifetime.Cancel();_lifetime.Dispose();_browser.Dispose();}
     private void SetRefreshInterval(){if(_interval.SelectedItem is not string value)return;var minutes=int.Parse(value);_store.SetSetting("refresh_minutes",minutes.ToString());_refreshTimer.Stop();if(minutes>0)_refreshTimer.Interval=minutes*60_000; if(minutes>0)_refreshTimer.Start();}
-    private async Task RefreshAllAsync(){if(_loading)return;_loading=true;_refresh.Enabled=false;try{var feeds=_store.GetFeeds().Where(x=>x.Enabled).ToList();int failed=0;foreach(var feed in feeds){if(_lifetime.IsCancellationRequested)break;await _reader.RefreshAsync(feed,_lifetime.Token);if(feed.LastResult.StartsWith("失敗"))failed++;}RefreshArticles();_status.Text=$"更新完了：{feeds.Count-failed}/{feeds.Count}フィード成功　{DateTime.Now:HH:mm:ss}";}catch(OperationCanceledException){}finally{_loading=false;_refresh.Enabled=true;}}
+    private async Task RefreshAllAsync(){if(_loading||IsDisposed)return;_loading=true;_refresh.Enabled=false;try{var feeds=_store.GetFeeds().Where(x=>x.Enabled).ToList();int failed=0;foreach(var feed in feeds){if(_lifetime.IsCancellationRequested)break;await _reader.RefreshAsync(feed,_lifetime.Token);if(feed.LastResult.StartsWith("失敗"))failed++;}RefreshArticles();_status.Text=$"更新完了：{feeds.Count-failed}/{feeds.Count}フィード成功　{DateTime.Now:HH:mm:ss}";}catch(OperationCanceledException){}catch(Exception ex){StartupDiagnostics.Write(ex,"RSS refresh");if(!IsDisposed)_status.Text=$"更新エラー。詳細: {StartupDiagnostics.LogPath}";}finally{_loading=false;if(!IsDisposed)_refresh.Enabled=true;}}
     private void RefreshArticles(){if(IsDisposed)return;try{if(_view=="カテゴリ"&&_selectedCategoryId==null){var cats=_store.GetCategories();if(cats.Count>0){using var d=new SelectDialog("カテゴリ",cats.Cast<object>().ToList());if(d.ShowDialog(this)==DialogResult.OK&&d.Selected is Category c)_selectedCategoryId=c.Id;}}
         var rows=_store.GetArticles(_view,_search.Text,_view=="カテゴリ"?_selectedCategoryId:null);_articles.DataSource=rows;foreach(DataGridViewRow r in _articles.Rows)if(r.DataBoundItem is Article a&&a.IsRead)r.DefaultCellStyle.ForeColor=SystemColors.GrayText;_status.Text=$"{rows.Count} 件";
     }catch(Exception ex){_status.Text=$"表示エラー: {ex.Message}";}}

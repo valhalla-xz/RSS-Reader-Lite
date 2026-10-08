@@ -59,8 +59,8 @@ git push origin HEAD
 GitHub Actionsが有効な場合、重複しないバージョンタグをプッシュするとWindowsビルドとスモークテストを実行し、成功後に配布ZIPを添付したGitHub Releaseを公開します。Actionsが無効な場合は、作成済みのZIPを使いGitHubの[Releases](https://github.com/valhalla-xz/RSS-Reader-Lite/releases)から手動でリリースしてください。このv0.1.2はActionsの実行履歴が確認できなかったため、GitHub APIからリリースを作成しています。
 
 ```powershell
-git tag v0.1.3
-git push origin v0.1.3
+git tag v0.1.4
+git push origin v0.1.4
 ```
 
 Windows向けx64アプリとしてビルドされます。配布用出力は次で作成できます。
@@ -80,7 +80,7 @@ dotnet publish .\WinFormsApp1\WinFormsApp1.csproj -c Release -o .\artifacts\publ
 
 ## 保存先と更新
 
-設定、フィード、記事、既読状態、カテゴリ、分類ルール、興味キーワードは`%LOCALAPPDATA%\LocalNewsReader\news.db`に保存します。更新間隔は手動のみ、5、10、15、30、60分から選べます。アプリを閉じると自動更新と進行中のRSS取得を停止します。
+設定、フィード、記事、既読状態、カテゴリ、分類ルール、興味キーワードは`%LOCALAPPDATA%\LocalNewsReader\news.db`に保存します。起動時エラーの詳細は`%LOCALAPPDATA%\LocalNewsReader\startup.log`に記録します。更新間隔は手動のみ、5、10、15、30、60分から選べます。アプリを閉じると自動更新と進行中のRSS取得を停止します。
 
 ## 主な機能
 

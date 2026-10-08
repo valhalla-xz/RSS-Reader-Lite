@@ -1,0 +1,44 @@
+name: Windows release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-test-release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore app dependencies
+        run: dotnet restore .\WinFormsApp1.slnx
+
+      - name: Build app
+        run: dotnet build .\WinFormsApp1.slnx -c Release --no-restore
+
+      - name: Restore and build smoke tests
+        run: dotnet build .\tests\LocalNewsReader.SmokeTests\LocalNewsReader.SmokeTests.csproj -c Release
+
+      - name: Run smoke tests
+        run: dotnet run --no-build -c Release --project .\tests\LocalNewsReader.SmokeTests\LocalNewsReader.SmokeTests.csproj
+
+      - name: Publish Windows x64 app
+        run: dotnet publish .\WinFormsApp1\WinFormsApp1.csproj -c Release -o .\artifacts\publish
+
+      - name: Package release asset
+        run: Compress-Archive -Path .\artifacts\publish\* -DestinationPath .\artifacts\RSS-Reader-Lite-${{ github.ref_name }}-win-x64.zip
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create $env:GITHUB_REF_NAME .\artifacts\RSS-Reader-Lite-$($env:GITHUB_REF_NAME)-win-x64.zip --title "RSS Reader Lite $env:GITHUB_REF_NAME" --notes-file CHANGELOG.md --verify-tag --latest

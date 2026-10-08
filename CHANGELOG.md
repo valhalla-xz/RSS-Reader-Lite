@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.1
+## v0.1.2
 
 - Expanded first-run feed choices to 34 Japanese and international sources across general news, business, politics, technology, science, health, arts, sports, travel, and other sections.
 - Expanded interest presets and default classification categories to cover broad everyday news topics.

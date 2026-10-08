@@ -1,3 +1,7 @@
+# This is AI Coding App!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+AIなしで俺にコーディングはできません
+
 # RSS Reader Lite
 
 RSS/Atomニュースを端末内のSQLiteへ保存し、分類ルールや興味設定で整理して閲覧するWindowsデスクトップアプリです。常駐サービス、タスクトレイ、スタートアップ登録は行いません。自動更新はアプリを開いている間だけ動作します。
@@ -12,7 +16,7 @@ GitHub: https://github.com/valhalla-xz/RSS-Reader-Lite
 - ローカル保存: `Microsoft.Data.Sqlite` と `SQLitePCLRaw`
 - 内蔵記事表示: Microsoft Edge WebView2 Runtime
 
-Windows 10 22H2には.NET Framework 4.8が含まれます。現行.NET 8/10のWindows 10対応はEnterprise/LTSCなどに限られるため、このアプリは22H2で動く.NET Framework 4.8を対象にします。Windows 10 Home/Pro 22H2自体は2025年10月にサポート終了しているため、OSを利用する場合はMicrosoftのESUまたはWindows 11への移行をご検討ください。[.NET Frameworkの対応OS](https://learn.microsoft.com/en-us/dotnet/framework/get-started/system-requirements) / [Windows 10 22H2のサポート終了](https://learn.microsoft.com/en-us/lifecycle/announcements/windows-10-22h2-end-of-support-update)
+Windows 10 22H2には.NET Framework 4.8が含まれます。現行.NET 8/10のWindows 10対応はEnterprise/LTSCなどに限られるため、このアプリは22H2で動く.NET Framework 4.8を対象にします。
 
 WebView2 Evergreen RuntimeはWindows 10/11で利用でき、Windows 11には通常プリインストールされています。Windows 10では未導入の端末があるため、記事をアプリ内で読むには[WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)をインストールしてください。外部ブラウザで開く機能はWebView2がなくても使えます。
 
@@ -24,7 +28,7 @@ WebView2 Evergreen RuntimeはWindows 10/11で利用でき、Windows 11には通�
 2. 興味カテゴリを選び、独自キーワードを入力
 3. 自動更新間隔を確認して開始
 
-初期フィード候補は日本・海外の複数分野から選べます。日本はNHK、ITmedia総合/NEWS/AI+/Mobile/PC USER/ビジネス/エンタープライズ、GIGAZINE、nippon.comニュース/旅と暮らし。海外はBBC（世界、アジア、政治、経済、テクノロジー、科学、健康、芸術、スポーツ）、The Guardian（世界、経済、テクノロジー、科学、環境、文化、スポーツ）、Le Monde（国際、経済、科学、健康、文化、スポーツ、旅行）、NASAを用意しています。既定では国内一般、海外一般、経済などを選択し、個別ジャンルはウィザードで任意に追加できます。ITmediaの提供カテゴリは[運営元のRSS一覧](https://corp.itmedia.co.jp/media/rss_list/)、BBCは[公式フィード案内](https://support.bbc.co.uk/platform/feeds/NewsFeeds.htm)、Guardianは[公式RSS説明](https://www.theguardian.com/help/feeds)、Le Mondeは[公式RSS一覧](https://www.lemonde.fr/en/about-us/article/2026/03/27/le-monde-rss-feeds_6751860_115.html)、nippon.comは[公式RSS一覧](https://www.nippon.com/ja/rss_list/)を参照しています。GIGAZINEは[公式RSS URL案内](https://gigazine.net/news/20180620-gigazine-rss-change/)を参照しています。配信元の仕様やURLは変更されるため、初回取得結果はフィード管理画面でご確認ください。
+初期フィード候補は日本・海外の複数分野から選べます。配信元の仕様やURLは変更されるため、初回取得結果はフィード管理画面でご確認ください。
 
 初期カテゴリと興味の候補も、国内外ニュース、政治・社会、経済、テクノロジー、PC/モバイル、自動車、科学、環境、健康、教育、文化、スポーツ、ゲーム、旅行・食を含む構成です。初期選択は広めのジャンルに設定し、個人の関心に合わせて後から追加・変更できます。
 
